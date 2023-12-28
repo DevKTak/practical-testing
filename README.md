@@ -16,4 +16,4 @@
 > **테스트는 `귀찮다.` 귀찮지만 `해야 한다.`**
 
 ## 테스트 케이스 세분화하기
-![Alt text](<스크린샷 2023-12-28 오후 2.48.11.png>)
+![세분화](https://github.com/wbluke/practical-testing/assets/68748397/62e56b66-286e-46e0-a97d-465b9a36a5ae)
