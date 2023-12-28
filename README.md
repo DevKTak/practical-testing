@@ -1,6 +1,5 @@
-# Practical Testing
-
-## 테스트는 왜 필요할까?
+# 섹션 1
+# 테스트는 왜 필요할까?
 ### 테트코드를 작성하지 않는다면
 - 변화가 생기는 매순간마다 발생할 수 있는 모든 Case를 고려해야 한다.
 - 변화가 생기는 매순간마다 모든 팀원이 동일한 고민을 해야 한다.
@@ -15,5 +14,36 @@
 ### 결론
 > **테스트는 `귀찮다.` 귀찮지만 `해야 한다.`**
 
-## 테스트 케이스 세분화하기
+<br><br>
+
+# 섹션 2
+# 테스트 케이스 세분화하기
 ![세분화](https://github.com/wbluke/practical-testing/assets/68748397/62e56b66-286e-46e0-a97d-465b9a36a5ae)
+- ex) 5 이상의 조건이라면 해피 케이스로 5, 예외 케이스를 4로 두 가지에 대하여 경계값을 테스트한다.
+
+### 예외 케이스 예시
+![image](https://github.com/wbluke/practical-testing/assets/68748397/8361fc56-e892-40f9-8c5f-be0a4588e896)
+
+# 테스트하기 어려운 영역을 분리하기
+![image](https://github.com/wbluke/practical-testing/assets/68748397/cde2489a-7ac9-4a5a-86b5-26be90cf363e)
+
+> **아래와 같이 값이 계속해서 변경되는 코드는 테스트가 어렵기 때문에 외부로 분리하자**
+### [Before]
+![image](https://github.com/wbluke/practical-testing/assets/68748397/5c333818-6e09-49e7-a4ee-7c0ccb66bac6)
+
+### [After]
+![image](https://github.com/wbluke/practical-testing/assets/68748397/dad0b137-61ce-4515-9e1a-1bb08e7cfaaa)
+
+<br><br>
+
+# 섹션 3
+# TDD: Test Driven Development
+> **TDD의 기본 프로세스는 레드 - 그린 - 리팩토링**
+
+<br><br>
+
+# 섹션 4
+# 테스트는 [문서]다.
+![image](https://github.com/wbluke/practical-testing/assets/68748397/b96555f3-913d-4c4f-97e5-d57b0d985204)
+
+# DisplayName을 섬세하게
