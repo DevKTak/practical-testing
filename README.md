@@ -69,7 +69,10 @@
 - **Spring 진영에서는 JPA를 한번 더 추상화한 Spring Data JPA 제공**
 - QueryDSL과 조합하여 많이 사용한다. (타입체크, 동적쿼리)
 
-## Persistence Layer 테스트
+## Persistence Layer
+- Data Access의 역할
+- 비즈니스 가공로직이 포함되어서는 안된다. (Data에 대한 CRUD에만 집중한 레이어)
+
 ```java
  // List 테스트 예제
 
@@ -119,4 +122,39 @@ class ProductRepositoryTest {
                         tuple("002", "카페라떼", HOLD)
                 );
 ```
+- **✅ `extracting`, `containsExactlyInAnyOrder`, `tuple`, `containsExactly`**
+## Business Layer 테스트 (1)
+- Persistence Layer와의 상호작용(Data를 읽고 쓰는 행위)을 통해 비지니스 로직을 전개시킨다.
+- `트랜잭션`을 보장해야 한다.
 
+<br>
+
+```java
+assertThat(orderResponse.getId()).isNotNull(); // 아이디는 중요하지 않을 때 사용
+assertThat(order.getOrderStatus()).isEqualByComparingTo(OrderStatus.INIT); // ENUM 비교
+```
+- **✅ `isNotNull`, `isEqualByComparingTo`**
+
+## Business Layer 테스트 (2)
+> **ex. 아메리카노라는 상품의 상품번호로 주문이 2개 이상 중복으로 들어왔을 시 문제**
+```java
+public class OrderService {
+
+        private List<Product> findProductsBy(List<String> productNumbers) {
+
+        // in절에서 상품 중복 제거된 product만 리턴됨
+        List<Product> products = productRepository.findAllByProductNumberIn(productNumbers);
+
+        // map으로 가공, productNumber를 key값으로 하고 product를 value로 만듬
+        Map<String, Product> productMap = products.stream()
+                .collect(Collectors.toMap(Product::getProductNumber, p -> p));
+
+        // productNumber를 순회하면서 productMap에서 product를 추출하여 중복된 상품도 리스트로 만듬
+        return productNumbers.stream()
+                .map(productMap::get)
+                .collect(Collectors.toList());
+        }
+}
+```
+
+## Business Layer 테스트 (3)
