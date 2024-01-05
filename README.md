@@ -136,7 +136,7 @@ assertThat(order.getOrderStatus()).isEqualByComparingTo(OrderStatus.INIT); // EN
 - **✅ `isNotNull`, `isEqualByComparingTo`**
 
 ## Business Layer 테스트 (2)
-> **ex. 아메리카노라는 상품의 상품번호로 주문이 2개 이상 중복으로 들어왔을 시 문제**
+> ### **ex. `findAllByProductNumberIn` 쿼리 시, 아메리카노라는 상품의 상품번호로 주문이 2개 이상 중복일 경우 문제**
 ```java
 public class OrderService {
 
@@ -158,3 +158,53 @@ public class OrderService {
 ```
 
 ## Business Layer 테스트 (3)
+> ### 아래와 같이 간단해 보이는 메소드도 테스트한다.   
+> ### 이유: 언제 새로운 타입이 추가되거나 삭제될지 모르기 때문에
+```java
+@Getter
+@RequiredArgsConstructor
+public enum ProductType {
+
+    HANDMADE("제조 음료"),
+    BOTTLE("병 음료"),
+    BAKERY("베이커리");
+
+    private final String text;
+
+    public static boolean containsStockType(ProductType type) {
+        return List.of(BOTTLE, BAKERY).contains(type);
+    }
+}
+
+class ProductTypeTest {
+
+    @DisplayName("상품 타입이 재고 관련 타입인지를 체크한다.")
+    @Test
+    void containsStockType() {
+        // given
+        ProductType givenType = ProductType.HANDMADE;
+
+        // when
+        boolean result = ProductType.containsStockType(givenType);
+
+        // then
+        assertThat(result).isFalse();
+    }
+
+    @DisplayName("상품 타입이 재고 관련 타입인지를 체크한다.")
+    @Test
+    void containsStockType2() {
+        // given
+        ProductType givenType = ProductType.BAKERY;
+
+        // when
+        boolean result = ProductType.containsStockType(givenType);
+
+        // then
+        assertThat(result).isTrue();
+    }
+
+}
+```
+- **✅ `isZero == isEqualTo(0)`**
+
