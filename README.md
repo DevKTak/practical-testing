@@ -322,3 +322,10 @@ public class OrderService {
 
 }
 ```
+
+## Presentation Layer 테스트 (1)
+- 외부 세계의 요청을 가장 먼저 받는 계층
+- 파라미터에 대한 최소한의 검증을 수행한다.
+
+
+## Presentation Layer 테스트 (2)
