@@ -208,3 +208,117 @@ class ProductTypeTest {
 ```
 - **✅ `isZero == isEqualTo(0)`**
 
+### OrderService.java
+```java
+private void deductStockQuantities(List<Product> products) {
+        List<String> stockProductNumbers = extractStockProductNumbers(products);
+
+        Map<String, Stock> stockMap = createStockMapBy(stockProductNumbers);
+        Map<String, Long> productCountingMap = createCountingMapBy(stockProductNumbers);
+
+        for (String stockProductNumber : new HashSet<>(stockProductNumbers)) {
+                Stock stock = stockMap.get(stockProductNumber);
+                int quantity = productCountingMap.get(stockProductNumber).intValue();
+
+                if (stock.isQuantityLessThan(quantity)) {
+                throw new IllegalArgumentException("재고가 부족한 상품이 있습니다.");
+                }
+                stock.deductQuantity(quantity);
+        }
+}
+```
+
+### Stock.java
+```java
+public boolean isQuantityLessThan(int quantity) {
+        return this.quantity < quantity;
+}
+
+public void deductQuantity(int quantity) {
+        if (isQuantityLessThan(quantity)) {
+                throw new IllegalArgumentException("차감할 재고 수량이 없습니다.");
+        }
+        this.quantity -= quantity;
+}
+```
+
+> **예외 처리하는 부분이 중복되는것 같아 보이지만 OrderService.java에서는 주문 생성 로직을 수행과정에서 재고 감소를 하는 것이고 Stock.java는 밖에 서비스가 어떻게 되어있는지 전혀 모릅니다. 수량을 차감한다고 했을 때 올바른 수량 차감 로직을 보장해줘야 합니다. 또한 deductQuantity 메소드를 다른곳에서 또 쓰일 수 있기 때문에 전혀 다른 상황입니다.**
+
+> ✅ 
+> - **스프링은 기본적으로 JpaRepository의 구현제로 사용하는 SimpleJpaRepository에 읽기전용 트랜잭션이 걸려있습니다. 고로 트랜잭션이 보장됩니다.**
+> - **SimpleJpaRepository에 save, delete 메서드에는 @Transactional 이 붙어있습니다.**
+> - **그러나 변경감지에 대해서는 직접 설정한 트랜잭션이 있어야 합니다.**
+
+### 리팩토링
+1. 가공 로직은 메소드로 한단계 더 추상화
+2. 호출되는 private 메소드들의 순서 맞춰주기
+![image](https://github.com/wbluke/practical-testing/assets/154389971/c9e22597-c0a9-479b-850f-d9615de7ed7a)
+
+```java
+@Transactional
+@RequiredArgsConstructor
+@Service
+public class OrderService {
+
+    private final ProductRepository productRepository;
+    private final OrderRepository orderRepository;
+    private final StockRepository stockRepository;
+
+    public OrderResponse createOrder(OrderCreateRequest request, LocalDateTime registeredDateTime) {
+        List<String> productNumbers = request.getProductNumbers();
+        List<Product> products = findProductsBy(productNumbers);
+
+        deductStockQuantities(products);
+
+        Order order = Order.create(products, registeredDateTime);
+        Order savedOrder = orderRepository.save(order);
+        return OrderResponse.of(savedOrder);
+    }
+
+    private void deductStockQuantities(List<Product> products) {
+        List<String> stockProductNumbers = extractStockProductNumbers(products);
+
+        Map<String, Stock> stockMap = createStockMapBy(stockProductNumbers);
+        Map<String, Long> productCountingMap = createCountingMapBy(stockProductNumbers);
+
+        for (String stockProductNumber : new HashSet<>(stockProductNumbers)) {
+            Stock stock = stockMap.get(stockProductNumber);
+            int quantity = productCountingMap.get(stockProductNumber).intValue();
+
+            if (stock.isQuantityLessThan(quantity)) {
+                throw new IllegalArgumentException("재고가 부족한 상품이 있습니다.");
+            }
+            stock.deductQuantity(quantity);
+        }
+    }
+
+    private List<Product> findProductsBy(List<String> productNumbers) {
+        List<Product> products = productRepository.findAllByProductNumberIn(productNumbers);
+        Map<String, Product> productMap = products.stream()
+                .collect(Collectors.toMap(Product::getProductNumber, p -> p));
+
+        return productNumbers.stream()
+                .map(productMap::get)
+                .collect(Collectors.toList());
+    }
+
+    private static List<String> extractStockProductNumbers(List<Product> products) {
+        return products.stream()
+                .filter(product -> ProductType.containsStockType(product.getType()))
+                .map(Product::getProductNumber)
+                .collect(Collectors.toList());
+    }
+
+    private Map<String, Stock> createStockMapBy(List<String> stockProductNumbers) {
+        List<Stock> stocks = stockRepository.findAllByProductNumberIn(stockProductNumbers);
+        return stocks.stream()
+                .collect(Collectors.toMap(Stock::getProductNumber, s -> s));
+    }
+
+    private static Map<String, Long> createCountingMapBy(List<String> stockProductNumbers) {
+        return stockProductNumbers.stream()
+                .collect(Collectors.groupingBy(p -> p, Collectors.counting()));
+    }
+
+}
+```
