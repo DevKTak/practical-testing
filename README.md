@@ -327,5 +327,12 @@ public class OrderService {
 - 외부 세계의 요청을 가장 먼저 받는 계층
 - 파라미터에 대한 최소한의 검증을 수행한다.
 
+### @Transactional(readOnly = true)
+- readOnly = true: 읽기전용
+- CURD에서 CUD 동작 X / only Read
+- JPA에서의 이점: 1차 캐시에 스냅샷을 찍고 트랜잭션 커밋 플러시 시점에 더티체킹을 하여 달라진 부분에 대하여 Update 쿼리를 날리지만 CUD 동작을 하지 않기 때문에 `스냅샷 저장`, `변경 감지`를 안해도 되는 이점이 생깁니다. => **`성능 향상`**
+- CQRS(Command and Query Responsibility Segregation): Command와 Query 분리
+- Master DB는 Write용으로 사용하고 Slave DB는 Read용으로 사용할 때 각 DB에 대하여 접근하는 엔드포인트(URL)을 분리할 때 @Transactional의 속성 값을 보고 나누어 설정할 수 있습니다.
+
 
 ## Presentation Layer 테스트 (2)
