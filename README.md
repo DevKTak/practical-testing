@@ -78,7 +78,7 @@
 
  @ActiveProfiles("test")
 //@SpringBootTest
-@DataJpaTest
+@DataJpaTest // jpa와 관련된 빈들만 주입해주기 때문에 Service가 있으면 안될 수 있습니다
 class ProductRepositoryTest {
 
     @Autowired
@@ -247,7 +247,7 @@ public void deductQuantity(int quantity) {
 > ✅ 
 > - **스프링은 기본적으로 JpaRepository의 구현제로 사용하는 SimpleJpaRepository에 읽기전용 트랜잭션이 걸려있습니다. 고로 트랜잭션이 보장됩니다.**
 > - **SimpleJpaRepository에 save, delete 메서드에는 @Transactional 이 붙어있습니다.**
-> - **그러나 변경감지에 대해서는 직접 설정한 트랜잭션이 있어야 합니다.**
+> - **`그러나 변경감지에 대해서는 직접 설정한 트랜잭션이 있어야 합니다.`**
 
 ### 리팩토링
 1. 가공 로직은 메소드로 한단계 더 추상화
@@ -477,7 +477,7 @@ class ProductControllerTest {
         // given
         List<ProductResponse> result = List.of();
 
-        when(productService.getSellingProducts()).thenReturn(result); // 모킹해서 굳이 검사 안해도 될것 같음
+        when(productService.getSellingProducts()).thenReturn(result); // 모킹해서 굳이 검사 안해도 됩니다. 이유: 데이터에 대한 구체적인 검증은 Service 레이어에서 함
 
         // when // then
         mockMvc.perform(
@@ -552,3 +552,79 @@ class OrderControllerTest {
     }
 }
 ```
+
+# Mock을 마주하는 자세
+## Mockito로 Stubbing하기
+```java
+/** OrderStatisticsService.java **/
+
+public boolean sendOrderStatisticsMail(LocalDate orderDate, String email) {
+        // 해당 일자에 결제완료된 주문들을 가져와서
+        List<Order> orders = orderRepository.findOrdersBy(
+            orderDate.atStartOfDay(), // 오늘이 17일이라면 17일의 0시
+            orderDate.plusDays(1).atStartOfDay(),
+            OrderStatus.PAYMENT_COMPLETED
+        );
+
+        // 총 매출 합계를 계산하고
+        int totalAmount = orders.stream()
+            .mapToInt(Order::getTotalPrice)
+            .sum();
+
+        // 메일 전송
+        boolean result = mailService.sendMail(
+            "no-reply@cafekiosk.com",
+            email,
+            String.format("[매출통계] %s", orderDate),
+            String.format("총 매출 합계는 %s원입니다.", totalAmount)
+        );
+
+        if (!result) {
+            throw new IllegalArgumentException("매출 통계 메일 전송에 실패했습니다.");
+        }
+
+        return true;
+    }
+```
+- 메일 전송 로직을 사용하는 곳에서는 `@Transactional`을 붙이지 않는것이 좋습니다. 메일 전송 같은 긴 작업은 실제로 트랜잭션에 참여하지 않는게 좋습니다. 어차피 orderRepository.findOrdersBy와 같이 조회같은 것은 레파지토리 단에서 트랜잭션이 걸리기 때문입니다. 대신 OrderStatisticsServiceTest.java를 작성할 때 서비스단에 `@Transactional`이 적용되지 않으니깐 롤백되지 않기 때문에 아래와 같은 코드를 사용하여 롤백 시켜줍니다.
+
+```java
+@AfterEach
+void tearDown() {
+        orderProductRepository.deleteAllInBatch();
+        orderRepository.deleteAllInBatch();
+        productRepository.deleteAllInBatch();
+        mailSendHistoryRepository.deleteAllInBatch();
+}
+```
+- **✅ `atStartOfDay()`**
+  
+> ### N(Order) : M(Product)을 1(Order) : N(OrderProduct), N(OrderProduct) : 1(Product)로 풀어냈을 때 `new OrderProduct(this, product)` 부분 처리를 잘 해주자
+> **\* 추가로 Order와 Product는 단방향 관계로 매핑해주었습니다**
+```java
+/** Order.java */
+
+private LocalDateTime registeredDateTime;
+
+@OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+private List<OrderProduct> orderProducts = new ArrayList<>();
+
+  @Builder
+private Order(List<Product> products, OrderStatus orderStatus, LocalDateTime registeredDateTime) {
+        this.orderStatus = orderStatus;
+        this.totalPrice = calculateTotalPrice(products);
+        this.registeredDateTime = registeredDateTime;
+        this.orderProducts = products.stream()
+            .map(product -> new OrderProduct(this, product))
+            .collect(Collectors.toList());
+    }
+
+public static Order create(List<Product> products, LocalDateTime registeredDateTime) {
+        return Order.builder()
+            .orderStatus(OrderStatus.INIT)
+            .products(products)
+            .registeredDateTime(registeredDateTime)
+            .build();
+    }
+```
+
