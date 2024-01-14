@@ -78,7 +78,7 @@
 
  @ActiveProfiles("test")
 //@SpringBootTest
-@DataJpaTest // jpa와 관련된 빈들만 주입해주기 때문에 Service가 있으면 안될 수 있습니다
+@DataJpaTest // jpa와 관련된 빈들만 주입해주기 때문에 Service는 주입이 안될 수 있습니다.
 class ProductRepositoryTest {
 
     @Autowired
@@ -346,7 +346,7 @@ class ProductControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean // 스프링 테스트 컨텍스트에 Mock 객체를 주입
+    @MockBean // 스프링 테스트 컨텍스트에 Mock 객체를 주입 (@WebMvcTest에서 주로 사용)
     private ProductService productService;
 
     @DisplayName("신규 상품을 등록한다.")
@@ -553,7 +553,7 @@ class OrderControllerTest {
 }
 ```
 
-# Mock을 마주하는 자세
+# 섹션 6. Mock을 마주하는 자세
 ## Mockito로 Stubbing하기
 ```java
 /** OrderStatisticsService.java **/
@@ -586,7 +586,7 @@ public boolean sendOrderStatisticsMail(LocalDate orderDate, String email) {
         return true;
     }
 ```
-- 메일 전송 로직을 사용하는 곳에서는 `@Transactional`을 붙이지 않는것이 좋습니다. 메일 전송 같은 긴 작업은 실제로 트랜잭션에 참여하지 않는게 좋습니다. 어차피 orderRepository.findOrdersBy와 같이 조회같은 것은 레파지토리 단에서 트랜잭션이 걸리기 때문입니다. 대신 OrderStatisticsServiceTest.java를 작성할 때 서비스단에 `@Transactional`이 적용되지 않으니깐 롤백되지 않기 때문에 아래와 같은 코드를 사용하여 롤백 시켜줍니다.
+- 메일 전송 로직을 사용하는 곳에서는 `@Transactional`을 붙이지 않는것이 좋습니다. 메일 전송 같은 긴 작업은 실제로 트랜잭션에 참여하지 않는게 좋습니다. 어차피 orderRepository.findOrdersBy와 같이 조회같은 것은 레파지토리 단에서 트랜잭션이 걸리기 때문입니다. 대신 OrderStatisticsServiceTest.java를 작성할 때 서비스단에 `@Transactional`이 없는 경우에는 롤백을 보장할 수 없어서 테스트 코드에 따라 위의 메소드의 영향으로 아래 메소드가 실패할 수도 있기 때문에 아래와 같은 정리 코드를 사용하여 지워줘야 합니다.
 
 ```java
 @AfterEach
@@ -628,3 +628,41 @@ public static Order create(List<Product> products, LocalDateTime registeredDateT
     }
 ```
 
+## @Mock, @Spy, @InjectMock
+- 목객체 기본 반환값이야기
+- verify()이야기
+- extendWith를 달아줘야하는것가 안달아줄때 모습
+- @InjectMock   DI 
+
+<img width="872" alt="image" src="https://github.com/f-lab-edu/hotel-java/assets/68748397/ac52e2e1-2d04-4791-a44b-92e2a8b27d75">
+
+
+## BDDMockito
+
+## Classicist VS Mockist
+
+
+
+# 섹션 7. 더 나은 테스트를 작성하기 위한 구체적 조언
+## 한 문단에 한 주제!
+
+## 완벽하게 제어하기
+시간 제어 이야기
+
+## 테스트 환경의 독립성을 보장하자
+
+## 테스트 간 독립성을 보장하자
+
+## 한눈에 들어오는 Test Fixture 구성하기
+
+## Test Fixture 클렌징
+
+## ParameterizedTest
+
+## DynamicTest
+
+## 테스트 수행도 비용이다. 환경 통합하기
+
+## Q. private 메서드의 테스트는 어떻게 하나요?
+
+## Q. 테스트에서만 필요한 메서드가 생겼는데 프로덕션 코드에서는 필요 없다면?
