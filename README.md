@@ -629,12 +629,18 @@ public static Order create(List<Product> products, LocalDateTime registeredDateT
 ```
 
 ## @Mock, @Spy, @InjectMock
-- 목객체 기본 반환값이야기
+<img width="872" alt="image" src="https://github.com/f-lab-edu/hotel-java/assets/68748397/ac52e2e1-2d04-4791-a44b-92e2a8b27d75">
+
+<br>
+
+- `@MockBean`: 스프링 애플리케이션 컨텍스트에 Mock 객체를 추가하기 위해 사용
+  - 예를들어 @MockBean private MailSendClient mailSendClient; MailSendClient 빈을 우리가 원하는 Mockito의 Mock 객체로 갈아 끼우겠다의 의미이고 항상 스프링 띄울때만 목 객체를 사용하는것은 아닙니다.
+  - 통합테스트가 아닌 단위테스트에서 목 객체를 사용할 일이 생겼을때는 순수한 모키토인 Mockito.mock() 또는 @Mock 애노테이션을 사용합니다.
+
 - verify()이야기
 - extendWith를 달아줘야하는것가 안달아줄때 모습
 - @InjectMock   DI 
 
-<img width="872" alt="image" src="https://github.com/f-lab-edu/hotel-java/assets/68748397/ac52e2e1-2d04-4791-a44b-92e2a8b27d75">
 
 
 ## BDDMockito
