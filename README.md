@@ -764,8 +764,47 @@ void createOrderWithCurrentTime() {
 ```
 
 ## 테스트 환경의 독립성을 보장하자
+```java
+/** OrderServiceTest.java **/
+
+@DisplayName("재고가 부족한 상품으로 주문을 생성하려는 경우 예외가 발생한다.")
+    @Test
+    void createOrderWithNoStock() {
+        // given
+        LocalDateTime registeredDateTime = LocalDateTime.now();
+
+        Product product1 = createProduct(BOTTLE, "001", 1000);
+        Product product2 = createProduct(BAKERY, "002", 3000);
+        Product product3 = createProduct(HANDMADE, "003", 5000);
+        productRepository.saveAll(List.of(product1, product2, product3));
+
+        Stock stock1 = Stock.create("001", 2);
+        Stock stock2 = Stock.create("002", 2);
+        stock1.deductQuantity(1); // todo
+        stockRepository.saveAll(List.of(stock1, stock2));
+
+        OrderCreateServiceRequest request = OrderCreateServiceRequest.builder()
+                .productNumbers(List.of("001", "001", "002", "003"))
+                .build();
+
+        // when // then
+        assertThatThrownBy(() -> orderService.createOrder(request, registeredDateTime))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("재고가 부족한 상품이 있습니다.");
+    }
+```
+- **이 테스트는 주문을 생성하는 createOrder라는 행위를 위한 테스트인데 `stock1.deductQuantity(1)` 재고를 차감하는 행위가 포함됨으로써 두 가지 케이스가 혼합이 되는 문제가 발생하였습니다.**
+- 이
+- given 에서 맥락을 이해하는데 한번 더 생각을 해야하는 상황이 됨. (분기문과 반복문과 같은 논리구조가 들어감)
+- 이 테스트가 실패를 할지 언정 // when & then 쪽에서 실패를 해야하는데 `stock1.deductQuantity(3)`으로 할 경우 given에서 실패가 떨어집니다.
 
 ## 테스트 간 독립성을 보장하자
+```java
+/** StockTest.java **/
+
+private static final Stock stock = Stock.create("001", 1);
+```
+- **이러한 전역변수를 통하여 테스트 메소드들 끼리 공유를 하지 않게 작성해야합니다.**
 
 ## 한눈에 들어오는 Test Fixture 구성하기
 
@@ -780,3 +819,61 @@ void createOrderWithCurrentTime() {
 ## Q. private 메서드의 테스트는 어떻게 하나요?
 
 ## Q. 테스트에서만 필요한 메서드가 생겼는데 프로덕션 코드에서는 필요 없다면?
+
+# 섹션 8. Appendix
+## 학습 테스트
+```java
+@DisplayName("주어진 개수만큼 List를 파티셔닝한다.")
+@Test
+void partitionLearningTest1() {
+    // given
+    List<Integer> integers = List.of(1, 2, 3, 4, 5, 6);
+
+    // when
+    List<List<Integer>> partition = Lists.partition(integers, 3);
+
+    // then
+    assertThat(partition).hasSize(2)
+        .isEqualTo(List.of(
+            List.of(1, 2, 3), List.of(4, 5, 6)
+        ));
+}
+```
+- **✅ `Lists.partition()`**
+
+```java
+@DisplayName("멀티맵 기능 확인")
+@TestFactory
+Collection<DynamicTest> multiMapLearningTest2() {
+    // given
+    Multimap<String, String> multimap = ArrayListMultimap.create();
+    multimap.put("커피", "아메리카노");
+    multimap.put("커피", "카페라떼");
+    multimap.put("커피", "카푸치노");
+    multimap.put("베이커리", "크루아상");
+    multimap.put("베이커리", "식빵");
+
+    return List.of(
+        DynamicTest.dynamicTest("1개 value 삭제", () -> {
+            // when
+            multimap.remove("커피", "카푸치노");
+
+            // then
+            Collection<String> results = multimap.get("커피");
+            assertThat(results).hasSize(2)
+                .isEqualTo(List.of("아메리카노", "카페라떼"));
+        }),
+        DynamicTest.dynamicTest("1개 key 삭제", () -> {
+            // when
+            multimap.removeAll("커피");
+
+            // then
+            Collection<String> results = multimap.get("커피");
+            assertThat(results).isEmpty();
+        })
+    );
+}
+```
+- **✅ `Multimap, ArrayListMultimap.create()`**
+
+## Spring REST Docs
