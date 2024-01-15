@@ -586,7 +586,9 @@ public boolean sendOrderStatisticsMail(LocalDate orderDate, String email) {
         return true;
     }
 ```
-- 메일 전송 로직을 사용하는 곳에서는 `@Transactional`을 붙이지 않는것이 좋습니다. 메일 전송 같은 긴 작업은 실제로 트랜잭션에 참여하지 않는게 좋습니다. 어차피 orderRepository.findOrdersBy와 같이 조회같은 것은 레파지토리 단에서 트랜잭션이 걸리기 때문입니다. 대신 OrderStatisticsServiceTest.java를 작성할 때 서비스단에 `@Transactional`이 없는 경우에는 롤백을 보장할 수 없어서 테스트 코드에 따라 위의 메소드의 영향으로 아래 메소드가 실패할 수도 있기 때문에 아래와 같은 정리 코드를 사용하여 지워줘야 합니다.
+- 메일 전송 로직을 사용하는 곳에서는 `@Transactional`을 붙이지 않는것이 좋습니다. 메일 전송 같은 긴 작업은 실제로 트랜잭션에 참여하지 않는게 좋습니다. 
+- 어차피 orderRepository.findOrdersBy()와 같이 조회같은 것은 레파지토리 단에서 트랜잭션이 걸리기 때문입니다. 
+- 대신 OrderStatisticsServiceTest.java를 작성할 때 서비스단에 `@Transactional`이 없는 경우에는 롤백을 보장할 수 없어서 테스트 코드에 따라 같은 클래스에 있는 다른 메소드의 영향으로 특정 메소드가 실패할 수도 있기 때문에 아래와 같은 정리 코드를 사용하여 지워줘야 합니다.
 
 ```java
 @AfterEach
@@ -600,7 +602,7 @@ void tearDown() {
 - **✅ `atStartOfDay()`**
   
 > ### N(Order) : M(Product)을 1(Order) : N(OrderProduct), N(OrderProduct) : 1(Product)로 풀어냈을 때 `new OrderProduct(this, product)` 부분 처리를 잘 해주자
-> **\* 추가로 Order와 Product는 단방향 관계로 매핑해주었습니다**
+> **\* 추가로 Order와 Product는 단방향 관계로 매핑해주었습니다.**
 ```java
 /** Order.java */
 
@@ -609,7 +611,7 @@ private LocalDateTime registeredDateTime;
 @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
 private List<OrderProduct> orderProducts = new ArrayList<>();
 
-  @Builder
+@Builder
 private Order(List<Product> products, OrderStatus orderStatus, LocalDateTime registeredDateTime) {
         this.orderStatus = orderStatus;
         this.totalPrice = calculateTotalPrice(products);
@@ -633,27 +635,133 @@ public static Order create(List<Product> products, LocalDateTime registeredDateT
 
 <br>
 
+### Mockito.mock(), @Mcok, @MockBean
 - `@MockBean`: 스프링 애플리케이션 컨텍스트에 Mock 객체를 추가하기 위해 사용
-  - 예를들어 @MockBean private MailSendClient mailSendClient; MailSendClient 빈을 우리가 원하는 Mockito의 Mock 객체로 갈아 끼우겠다의 의미이고 항상 스프링 띄울때만 목 객체를 사용하는것은 아닙니다.
-  - 통합테스트가 아닌 단위테스트에서 목 객체를 사용할 일이 생겼을때는 순수한 모키토인 Mockito.mock() 또는 @Mock 애노테이션을 사용합니다.
+  - 예를들어 **`@MockBean private MailSendClient mailSendClient;`** MailSendClient 빈을 우리가 원하는 **Mockito의 Mock 객체로 갈아 끼우겠다**의 의미입니다.
+- 항상 스프링 띄울때만 목 객체를 사용하는것은 아닙니다.
+- 통합테스트가 아닌 단위테스트에서 목 객체를 사용할 일이 생겼을 때는 스프링 애플리케이션 컨텍스트를 로딩하지 않고도 사용할 수 있는 순수한 모키토인 Mockito.mock() 또는 @Mock 애노테이션을 사용합니다.
+- 단위 테스트 시에 무분별하게 모킹을 통해 테스트를 작성하기 보다는 외부 라이브러리와 같이 직접 제어할 수 없는 경우에 모킹을 사용하는것이 좋습니다.
 
-- verify()이야기
-- extendWith를 달아줘야하는것가 안달아줄때 모습
-- @InjectMock   DI 
+### verify()
+```java
+/** 애노테이션을 사용한 코드 **/
 
+@Spy // 한 객체에서 일부는 실제객체, 일부는 Mock객체를 사용하고 싶을 때사용
+private MailSendClient mailSendClient;
 
+@Mock
+private MailSendHistoryRepository mailSendHistoryRepository;
+
+@InjectMocks
+private MailService mailService;
+```
+
+```java
+/** 애노테이션을 사용하지 않은 코드 **/
+
+MailSendClient mailSendClient = Mockito.mock(MailSendClient.claas);
+MailSendHistoryRepository mailSendHistoryRepository = Mockito.mock(MailSendHistoryRepository.class);
+
+MailService = mailService = new MailService(mailSendClient, mailSendHistoryRepository);
+```
+
+`verify(T mock, VerificationMode mode)`
+- mock: 행위를 검증하고자 하는 mock 객체
+- mode: 검증할 값을 정의하는 메소드. 옵션이다.
+
+```java
+// given
+
+// @Mock으로 사용할 경우
+when(mailSendClient.sendEmail(anyString(), anyString(), anyString(), anyString())).thenReturn(true);
+
+// @Spy로 사용할 경우
+doReturn(true)
+    .when(mailSendClient)
+    .sendEmail(anyString(), anyString(), anyString(), anyString());
+
+// when
+boolean result = mailService.sendMail("", "", "", "");
+
+// then
+// mock 객체인 mailSendHistoryRepository의 save 메서드가 1번 호출되었는지
+verify(mailSendHistoryRepository, times(1)).save(any(MailSendHistory.class));
+```
+
+### @InjectMock
+- `@InjectMocks private MailService mailService;`
+- MailService의 생성자를 보고 Mockito의 mock 객체로 선언된 객체를 주입해줍니다. (DI와 같은 역할))
 
 ## BDDMockito
+```java
+// given
+
+// Mockito.when(mailSendClient.sendEmail(anyString(), anyString(), anyString(), anyString()))
+// .thenReturn(true);
+
+given(mailSendClient.sendEmail(anyString(), anyString(), anyString(), anyString()))
+    .willReturn(true);
+```
+- **given인데 문법이 Mockito.when()으로 되어있기 때문에 Mockito를 상속받아서 BDDMockito.given() 으로 BDD 스타일로 변경**
 
 ## Classicist VS Mockist
-
-
+실제 프로덕션 코드에서 런타임 시점에 일어날 일을 정확하게 Stubbing 했다고 단언할 수 있는가?
 
 # 섹션 7. 더 나은 테스트를 작성하기 위한 구체적 조언
 ## 한 문단에 한 주제!
 
 ## 완벽하게 제어하기
-시간 제어 이야기
+```java
+/** BAD Example **/
+public Order createOrder() {
+    LocalDateTime currentDateTime = LocalDateTime.now(); // 현재 시간이 내부에 있는 코드
+
+    LocalTime currentTime = currentDateTime.toLocalTime();
+    if (currentTime.isBefore(SHOP_OPEN_TIME) || currentTime.isAfter(SHOP_CLOSE_TIME)) {
+        throw new IllegalArgumentException("주문 시간이 아닙니다. 관리자에게 문의하세요.");
+    }
+
+    return new Order(currentDateTime, beverages);
+}
+
+@Test
+void createOrder() {
+    CafeKiosk cafeKiosk = new CafeKiosk();
+    Americano americano = new Americano();
+    cafeKiosk.add(americano);
+
+    Order order = cafeKiosk.createOrder();
+
+    assertThat(order.getBeverages()).hasSize(1);
+    assertThat(order.getBeverages().get(0).getName()).isEqualTo("아메리카노");
+}
+```
+
+```java
+/** GOOD Example **/
+
+public Order createOrder(LocalDateTime currentDateTime) { // 현재 시간을 외부로 분리
+    LocalTime currentTime = currentDateTime.toLocalTime();
+    if (currentTime.isBefore(SHOP_OPEN_TIME) || currentTime.isAfter(SHOP_CLOSE_TIME)) {
+        throw new IllegalArgumentException("주문 시간이 아닙니다. 관리자에게 문의하세요.");
+    }
+
+    return new Order(currentDateTime, beverages);
+}
+
+@Test
+void createOrderWithCurrentTime() {
+    CafeKiosk cafeKiosk = new CafeKiosk();
+    Americano americano = new Americano();
+    cafeKiosk.add(americano);
+
+    // 현재시간을 외부로 분리하여 파라미터로 고정값을 줌으로써 원하는 상황을 완벽하게 연출할 수 있게 되었습니다.
+    Order order = cafeKiosk.createOrder(LocalDateTime.of(2023, 1, 17, 10, 0));
+
+    assertThat(order.getBeverages()).hasSize(1);
+    assertThat(order.getBeverages().get(0).getName()).isEqualTo("아메리카노");
+}
+```
 
 ## 테스트 환경의 독립성을 보장하자
 
