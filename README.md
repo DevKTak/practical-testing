@@ -589,6 +589,7 @@ public boolean sendOrderStatisticsMail(LocalDate orderDate, String email) {
 - 메일 전송 로직을 사용하는 곳에서는 `@Transactional`을 붙이지 않는것이 좋습니다. 메일 전송 같은 긴 작업은 실제로 트랜잭션에 참여하지 않는게 좋습니다. 
 - 어차피 orderRepository.findOrdersBy()와 같이 조회같은 것은 레파지토리 단에서 트랜잭션이 걸리기 때문입니다. 
 - 대신 OrderStatisticsServiceTest.java를 작성할 때 서비스단에 `@Transactional`이 없는 경우에는 롤백을 보장할 수 없어서 테스트 코드에 따라 같은 클래스에 있는 다른 메소드의 영향으로 특정 메소드가 실패할 수도 있기 때문에 아래와 같은 정리 코드를 사용하여 지워줘야 합니다.
+- **참고:** https://velog.io/@dkajffkem/Transactional-%EB%AA%A8%EB%A5%B4%EB%A9%B4-%EC%A0%88%EB%8C%80-%EC%95%88%EB%90%98%EB%8A%94%EA%B2%83%EB%93%A4-%EC%A7%84%ED%9D%99%EB%B0%AD%EC%97%90%EC%84%9C-%EC%95%8C%EA%B2%8C%EB%90%9C-Spring-JPA
 
 ```java
 @AfterEach
