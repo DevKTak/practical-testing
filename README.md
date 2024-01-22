@@ -805,7 +805,7 @@ void createOrderWithCurrentTime() {
 
 private static final Stock stock = Stock.create("001", 1);
 ```
-- **이러한 전역변수를 통하여 테스트 메소드들 끼리 공유를 하지 않게 작성해야합니다.**
+- **이러한 전역변수를 통하여 테스트 메소드들 끼리 공유를 하지 않게 작성해야합니다. 테스트간의 순서가 생기게 되고 강결합이 되고 독립성이 보장되지 않습니다.**
 - @BeforerEach 같은곳에 픽스처를 구성해두면 수정 시 모든 테스트에 영향을 줍니다.
 - 또한 테스트가 너무 길어지면 다시 맨위 까지 스크롤해서 확인해야하기때문에 테스트 코드가 문서로써의 역할을 완벽히 해내지 못하게 되는 꼴
 
@@ -890,6 +890,38 @@ void containsStockType5(ProductType productType, boolean expected) {
 https://junit.org/junit5/docs/current/user-guide/#writing-tests-parameterized-tests
 
 ## DynamicTest
+> **일련의 과정 시나리오를 테스트하고 싶고 공유 변수 역할이 필요할 때!**
+```java
+@DisplayName("재고 차감 시나리오")
+@TestFactory // @Test 대신 @TestFactory
+Collection<DynamicTest> stockDeductionDynamicTest() {
+    // given
+    Stock stock = Stock.create("001", 1);
+
+    return List.of(
+        DynamicTest.dynamicTest("재고를 주어진 개수만큼 차감할 수 있다.", () -> {
+            // given
+            int quantity = 1;
+
+            // when
+            stock.deductQuantity(quantity);
+
+            // then
+            assertThat(stock.getQuantity()).isZero();
+        }),
+        DynamicTest.dynamicTest("재고보다 많은 수의 수량으로 차감 시도하는 경우 예외가 발생한다.", () -> {
+            // given
+            int quantity = 1;
+
+            // when // then
+            assertThatThrownBy(() -> stock.deductQuantity(quantity))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("차감할 재고 수량이 없습니다.");
+        })
+    );
+}
+```
+
 
 ## 테스트 수행도 비용이다. 환경 통합하기
 
