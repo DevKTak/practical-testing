@@ -805,12 +805,88 @@ void createOrderWithCurrentTime() {
 private static final Stock stock = Stock.create("001", 1);
 ```
 - **이러한 전역변수를 통하여 테스트 메소드들 끼리 공유를 하지 않게 작성해야합니다.**
+- @BeforerEach 같은곳에 픽스처를 구성해두면 수정 시 모든 테스트에 영향을 줍니다.
+- 또한 테스트가 너무 길어지면 다시 맨위 까지 스크롤해서 확인해야하기때문에 테스트 코드가 문서로써의 역할을 완벽히 해내지 못하게 되는 꼴
 
 ## 한눈에 들어오는 Test Fixture 구성하기
+1. @BeforeEach를 사용하려면    
+    1. 각 테스트 입장에서 봤을 때 아예 몰라도 테스트 내용을 이해하는 데에 문제가 없는가? 테스트가 문서로서의 기능을 하는데 지장이 없는가?
+    2. 수정해도 모든 테스트에 영향을 주지 않는가?
+2. data.sql 같은 외부에서 저장하는것도 데이터의 파편화를 일으키기 때문에 유지보수 포인트가 됩니다.
+3. // given 절에서 픽스처를 구성할 때 필요한 파라미터만 보낸다.
+    ex) Product product = createProduct("001", HANDMADE, SELLING, "아메리카노", 4000); 이라면 하드코딩 값은 굳이 안보내고 빌더에서 하드코딩하면 될듯
+4. 픽스처를 만들기위한 빌더들을 한곳에서 하는 클래스를 지양하자
 
 ## Test Fixture 클렌징
 
 ## ParameterizedTest
+### 기존
+```java
+@DisplayName("상품 타입이 재고 관련 타입인지를 체크한다.")
+@Test
+void containsStockType() {
+    // given
+    ProductType givenType = ProductType.HANDMADE;
+
+    // when
+    boolean result = ProductType.containsStockType(givenType);
+
+    // then
+    assertThat(result).isFalse();
+}
+
+@DisplayName("상품 타입이 재고 관련 타입인지를 체크한다.")
+@Test
+void containsStockType2() {
+    // given
+    ProductType givenType = ProductType.BAKERY;
+
+    // when
+    boolean result = ProductType.containsStockType(givenType);
+
+    // then
+    assertThat(result).isTrue();
+}
+```
+
+### @CsvSource를 활용
+```java
+@DisplayName("상품 타입이 재고 관련 타입인지를 체크한다.")
+@CsvSource({"HANDMADE,false","BOTTLE,true","BAKERY,true"})
+@ParameterizedTest
+void containsStockType4(ProductType productType, boolean expected) {
+    // when
+    boolean result = ProductType.containsStockType(productType);
+
+    // then
+    assertThat(result).isEqualTo(expected);
+}
+
+private static Stream<Arguments> provideProductTypesForCheckingStockType() {
+    return Stream.of(
+        Arguments.of(ProductType.HANDMADE, false),
+        Arguments.of(ProductType.BOTTLE, true),
+        Arguments.of(ProductType.BAKERY, true)
+    );
+}
+```
+
+### @MethodSource를 활용
+```java
+@DisplayName("상품 타입이 재고 관련 타입인지를 체크한다.")
+@MethodSource("provideProductTypesForCheckingStockType")
+@ParameterizedTest
+void containsStockType5(ProductType productType, boolean expected) {
+    // when
+    boolean result = ProductType.containsStockType(productType);
+
+    // then
+    assertThat(result).isEqualTo(expected);
+}
+```
+
+### 그 외 다양한 방법
+https://junit.org/junit5/docs/current/user-guide/#writing-tests-parameterized-tests
 
 ## DynamicTest
 
